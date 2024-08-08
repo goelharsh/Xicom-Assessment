@@ -1,38 +1,40 @@
-const express = require("express")
-const app = express()
+const express = require("express");
+const app = express();
 
-const userRoutes = require("./routes/User")
-const database = require("./config/db")
-const cors = require("cors")
-const {cloudinaryConnect}  = require("./config/cloudinary")
+const userRoutes = require("./routes/User");
+const database = require("./config/db");
+const cors = require("cors");
 const bodyParser = require("body-parser");
-const dotenv = require("dotenv")
-const PORT  = process.env.PORT ||4000;
-dotenv.config()
+const dotenv = require("dotenv");
+const PORT = process.env.PORT || 4000;
+dotenv.config();
 
-database.connect()
-app.use(bodyParser.json()); // Use bodyParser for JSON payloads
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.json());
+// Connect to the database
+database.connect();
+
+// Middleware setup
+app.use(bodyParser.json()); // Parse JSON payloads
+app.use(bodyParser.urlencoded({ extended: true })); // Parse URL-encoded payloads
+app.use(express.json()); // Parse JSON payloads
 app.use(
-    cors({
-        origin:"*",
-        credentials:true
-    })
-)
+  cors({
+    origin: "*", // Allow requests from any origin (replace with your actual frontend URL in production)
+    credentials: true,
+  })
+);
 
-cloudinaryConnect();
+// Routes
+app.use("/api/v1/user", userRoutes); // Mount user routes under /api/v1/user
 
-app.use("/api/v1/user", userRoutes)
+// Test route
+app.get("/", (req, res) => {
+  return res.json({
+    success: true,
+    message: "Your server is up and running",
+  });
+});
 
-app.get("/", (req,res)=>{
-    return res.json({
-        success:true,
-        message:"Your server is up and running"
-    })
-})
-
-
-app.listen(PORT, ()=>{
-    console.log(`App is running at ${PORT}`)
-})
+// Start the server
+app.listen(PORT, () => {
+  console.log(`App is running at http://localhost:${PORT}`);
+});
