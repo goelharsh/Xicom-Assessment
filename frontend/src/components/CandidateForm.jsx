@@ -2,32 +2,53 @@ import React, { useState } from "react";
 import { GoUpload } from "react-icons/go";
 import { FaSquarePlus } from "react-icons/fa6";
 import { RiDeleteBin6Line } from "react-icons/ri";
-import axios from "axios";
+import axios from 'axios';
 
 const CandidateForm = () => {
+  const [documents, setDocuments] = useState([{ id: 1 }, { id: 2 }]);
+  const [sameAsResidential, setSameAsResidential] = useState(false);
+
+  // const [fileType, setFileType] =useState(false)
+  // function handleFileType(){
+  //   setFileType(true)
+  // }
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
-    dateOfBirth: "",
-    residentialStreet1: "",
-    residentialStreet2: "",
-    permanentStreet1: "",
-    permanentStreet2: "",
+    dob: "",
+    residentialAddress1: "",
+    residentialAddress2: "",
+    permanentAddress1: "",
+    permanentAddress2: "",
+    files: [], // Array to store file objects and metadata
+    fileNames: [], // Array to store file names
+    fileTypes: [] // Array to store file types
   });
 
-  const [documents, setDocuments] = useState([{ id: 1, file: null, fileName: "", fileType: "" }]);
-  const [sameAsResidential, setSameAsResidential] = useState(false);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+  const handleFileChange = (event, index) => {
+    const file = event.target.files[0];
+    const newFiles = [...formData.files];
+    newFiles[index] = file;
+    setFormData({ ...formData, files: newFiles });
   };
 
-  const handleFileChange = (index, e) => {
-    const newDocuments = [...documents];
-    newDocuments[index].file = e.target.files[0];
-    setDocuments(newDocuments);
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+  };
+
+  const handleArrayInputChange = (event, index, arrayName) => {
+    const { value } = event.target;
+    const updatedArray = [...formData[arrayName]];
+    updatedArray[index] = value;
+    setFormData({
+      ...formData,
+      [arrayName]: updatedArray
+    });
   };
 
   const handleSameAsResidentialChange = () => {
@@ -36,44 +57,61 @@ const CandidateForm = () => {
 
   const addDocument = () => {
     const newId = documents.length + 1;
-    setDocuments([...documents, { id: newId, file: null, fileName: "", fileType: "" }]);
+    setDocuments([...documents, { id: newId }]);
+    setFormData({
+      ...formData,
+      files: [...formData.files, null],
+      fileNames: [...formData.fileNames, ""],
+      fileTypes: [...formData.fileTypes, ""]
+    });
   };
 
   const deleteDocument = (id) => {
-    if (documents.length === 1) return;
+    if (documents.length === 2) {
+      return; // Prevent deleting the last permanent document
+    }
     setDocuments(documents.filter((doc) => doc.id !== id));
+    setFormData({
+      ...formData,
+      files: formData.files.filter((_, index) => index !== id - 1),
+      fileNames: formData.fileNames.filter((_, index) => index !== id - 1),
+      fileTypes: formData.fileTypes.filter((_, index) => index !== id - 1),
+    });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    const data = new FormData();
-    Object.keys(formData).forEach((key) => data.append(key, formData[key]));
-    
-    documents.forEach((doc, index) => {
-      if (doc.file) {
-        data.append('documents', doc.file);
-        data.append(`documents[${index}].fileName`, doc.fileName);
-        data.append(`documents[${index}].fileType`, doc.fileType);
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    // Prepare form data
+    const formDataToSubmit = new FormData();
+    Object.keys(formData).forEach((key) => {
+      if (key === "files") {
+        formData.files.forEach((file, index) => {
+          if (file) {
+            formDataToSubmit.append('files', file);
+            formDataToSubmit.append(`fileNames[${index}]`, formData.fileNames[index]);
+            formDataToSubmit.append(`fileTypes[${index}]`, formData.fileTypes[index]);
+          }
+        });
+      } else {
+        formDataToSubmit.append(key, formData[key]);
       }
     });
 
     try {
-      const response = await axios.post("http://localhost:3000/api/v1/user/submitDocument", data, {
+      const response = await axios.post('http://localhost:3000/api/v1/user/submitDocument', formDataToSubmit, {
         headers: {
-          "Content-Type": "multipart/form-data",
+          'Content-Type': 'multipart/form-data',
         },
       });
-      console.log(response)
-      alert("Documents submitted successfully!");
+      console.log("Form Data Submitted:", response.data);
     } catch (error) {
-      console.error(error);
-      alert("Error submitting documents.");
+      console.error("Error submitting form data:", error);
     }
   };
-
+  
   return (
-    <div className="w-full h-auto">
+    <div className="w-full h-auto bg-slate-100">
       <div className="w-[50%] h-auto mx-auto">
         <h1 className="text-2xl text-[#3C3C3C] w-[90%] font-bold mb-8 text-center">
           Candidate Form
@@ -91,7 +129,7 @@ const CandidateForm = () => {
                 className="w-[18rem] px-4 py-1 border border-gray-300 rounded-md focus:border-transparent"
                 name="firstName"
                 value={formData.firstName}
-                onChange={handleChange}
+                onChange={handleInputChange}
                 required
               />
             </div>
@@ -105,13 +143,13 @@ const CandidateForm = () => {
                 className="w-[18rem] px-4 py-1 border border-gray-300 rounded-md focus:border-transparent"
                 name="lastName"
                 value={formData.lastName}
-                onChange={handleChange}
+                onChange={handleInputChange}
                 required
               />
             </div>
           </div>
 
-          {/* Email and dob */}
+          {/* email and dob */}
           <div className="flex w-[90%] mx-auto gap-5">
             <div className="flex flex-col mb-4">
               <label className="font-bold text-[#3C3C3C]">
@@ -123,7 +161,7 @@ const CandidateForm = () => {
                 className="w-[18rem] px-4 py-1 border border-gray-300 rounded-md focus:border-transparent"
                 name="email"
                 value={formData.email}
-                onChange={handleChange}
+                onChange={handleInputChange}
                 required
               />
             </div>
@@ -134,17 +172,17 @@ const CandidateForm = () => {
               <div className="relative w-full">
                 <input
                   type="date"
-                  className={`w-[18rem] px-4 py-1 border border-gray-300 rounded-md focus:border-transparent text-gray-500`}
-                  name="dateOfBirth"
-                  value={formData.dateOfBirth}
-                  onChange={handleChange}
+                  className="w-[18rem] px-4 py-1 border border-gray-300 rounded-md focus:border-transparent text-gray-500"
+                  name="dob"
+                  value={formData.dob}
+                  onChange={handleInputChange}
                   required
                 />
               </div>
             </div>
           </div>
 
-          {/* Residential address */}
+          {/* residential address */}
           <div className="flex flex-col mx-auto w-[90%] mb-6">
             <label className="font-bold text-[#3C3C3C]">
               Residential Address{" "}
@@ -160,9 +198,9 @@ const CandidateForm = () => {
                   placeholder="Enter your street address here..."
                   type="text"
                   className="w-[18rem] px-4 py-1 border border-gray-300 rounded-md focus:border-transparent"
-                  name="residentialStreet1"
-                  value={formData.residentialStreet1}
-                  onChange={handleChange}
+                  name="residentialAddress1"
+                  value={formData.residentialAddress1}
+                  onChange={handleInputChange}
                   required
                 />
               </div>
@@ -175,9 +213,9 @@ const CandidateForm = () => {
                     placeholder="Enter your street address here..."
                     type="text"
                     className="w-[18rem] px-4 py-1 border border-gray-300 rounded-md focus:border-transparent"
-                    name="residentialStreet2"
-                    value={formData.residentialStreet2}
-                    onChange={handleChange}
+                    name="residentialAddress2"
+                    value={formData.residentialAddress2}
+                    onChange={handleInputChange}
                     required
                   />
                 </div>
@@ -193,7 +231,9 @@ const CandidateForm = () => {
               checked={sameAsResidential}
               onChange={handleSameAsResidentialChange}
             />
-            <label className=" text-[#3C3C3C]">Same as residential address</label>
+            <label className=" text-[#3C3C3C]">
+              Same as residential address
+            </label>
           </div>
 
           {/* Permanent Address */}
@@ -204,50 +244,38 @@ const CandidateForm = () => {
           >
             <label className="font-bold text-[#3C3C3C]">
               Permanent Address{" "}
-              {sameAsResidential ? (
-                ""
-              ) : (
-                <sup className="text-red-600 font-bold">*</sup>
-              )}
+              {sameAsResidential ? "" : <sup className="text-red-600 font-bold">*</sup>}
             </label>
 
             <div className="flex gap-5">
               <div className="flex flex-col mb-3 mt-2">
                 <label className="font text-[#3C3C3C]">
                   Street 1{" "}
-                  {sameAsResidential ? (
-                    ""
-                  ) : (
-                    <sup className="text-red-600 font-bold">*</sup>
-                  )}
+                  {sameAsResidential ? "" : <sup className="text-red-600 font-bold">*</sup>}
                 </label>
                 <input
                   placeholder="Enter your street address here..."
                   type="text"
                   className="w-[18rem] px-4 py-1 border border-gray-300 rounded-md focus:border-transparent"
-                  name="permanentStreet1"
-                  value={formData.permanentStreet1}
-                  onChange={handleChange}
+                  name="permanentAddress1"
+                  value={formData.permanentAddress1}
+                  onChange={handleInputChange}
                   required={!sameAsResidential}
                 />
               </div>
-              <div className="flex flex-col mb-4 mt-2 relative">
+              <div className="flex flex-col mb-3 mt-2 relative">
                 <label className="font text-[#3C3C3C]">
                   Street 2{" "}
-                  {sameAsResidential ? (
-                    ""
-                  ) : (
-                    <sup className="text-red-600 font-bold">*</sup>
-                  )}
+                  {sameAsResidential ? "" : <sup className="text-red-600 font-bold">*</sup>}
                 </label>
                 <div className="relative w-full">
                   <input
                     placeholder="Enter your street address here..."
                     type="text"
                     className="w-[18rem] px-4 py-1 border border-gray-300 rounded-md focus:border-transparent"
-                    name="permanentStreet2"
-                    value={formData.permanentStreet2}
-                    onChange={handleChange}
+                    name="permanentAddress2"
+                    value={formData.permanentAddress2}
+                    onChange={handleInputChange}
                     required={!sameAsResidential}
                   />
                 </div>
@@ -265,56 +293,55 @@ const CandidateForm = () => {
 
               <div className="flex gap-4">
                 <div className="flex flex-col">
-                  <label className=" text-[#3C3C3C]">
+                  <label className="text-[#3C3C3C]">
                     File Name <sup className="text-red-600 font-bold">*</sup>{" "}
                   </label>
                   <input
                     type="text"
                     required
                     className="w-[11rem] px-4 py-1 border border-gray-300 rounded-md focus:border-transparent"
-                    value={doc.fileName}
-                    onChange={(e) => {
-                      const newDocuments = [...documents];
-                      newDocuments[index].fileName = e.target.value;
-                      setDocuments(newDocuments);
-                    }}
+                    value={formData.fileNames[index] || ""}
+                    onChange={(e) => handleArrayInputChange(e, index, 'fileNames')}
+                    name="fileNames"
                   />
                 </div>
 
                 <div className="flex flex-col">
-                  <label className=" text-[#3C3C3C]">
+                  <label className="text-[#3C3C3C]">
                     Type of File <sup className="text-red-600 font-bold">*</sup>
                   </label>
                   <input
                     type="text"
                     required
                     className="w-[11rem] px-4 py-1 border border-gray-300 rounded-md focus:border-transparent"
-                    value={doc.fileType}
-                    onChange={(e) => {
-                      const newDocuments = [...documents];
-                      newDocuments[index].fileType = e.target.value;
-                      setDocuments(newDocuments);
-                    }}
+                    value={formData.fileTypes[index] || ""}
+                    onChange={(e) => handleArrayInputChange(e, index, 'fileTypes')}
+                    name="fileTypes"
                   />
                   <span>{"(image, pdf.)"}</span>
                 </div>
 
                 <div className="flex flex-col">
-                  <label className=" text-[#3C3C3C]">
+                  <label className="text-[#3C3C3C]" htmlFor={`files_${index}`}>
                     Upload Document{" "}
                     <sup className="text-red-600 font-bold">*</sup>{" "}
                   </label>
                   <div className="flex relative">
                     <input
+                      id={`files_${index}`}
                       type="file"
-                      required
-                      className="w-[11rem] px-4 py-1 border border-gray-300 rounded-md focus:border-transparent"
-                      onChange={(e) => handleFileChange(index, e)}
+                      // type={fileType ? "file" : "text"}
+                      // onClick={handleFileType}
+                      onChange={(event) => handleFileChange(event, index)}
+                      className="w-[11rem] px-4 py-1 border bg-white border-gray-300 rounded-md focus:border-transparent input-files"
                     />
-                    <GoUpload
-                      className="absolute left-[9.4rem] top-[0.4rem] font-bold"
-                      size={20}
-                    />
+                    <label htmlFor={`files_${index}`} className="file-input-label">
+                      <GoUpload
+                        className="absolute left-[9rem] top-[0.4rem] font-bold"
+                        size={20}
+                      />
+                      <span className="sr-only">Upload file</span>
+                    </label>
                   </div>
                 </div>
 
@@ -344,7 +371,9 @@ const CandidateForm = () => {
           ))}
 
           <div className="w-[90%] flex justify-center items-center mb-10">
-            <button type="submit" className="bg-[#3C3C3C] p-2 text-white px-20">Submit</button>
+            <button type="submit" className="bg-[#3C3C3C] p-2 text-white px-20">
+              Submit
+            </button>
           </div>
         </form>
       </div>
